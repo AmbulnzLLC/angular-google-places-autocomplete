@@ -9,6 +9,7 @@
  'use strict';
 
 angular.module('google.places', [])
+
   /**
    * DI wrapper around global google places library.
    *
@@ -56,6 +57,7 @@ angular.module('google.places', [])
                         $scope.predictions = [];
                         $scope.input = element;
                         $scope.options = $scope.options || {};
+                        $scope.ignoreTypes = attrs.ignoreTypes;
 
                         initAutocompleteDrawer();
                         initEvents();
@@ -190,6 +192,10 @@ angular.module('google.places', [])
 
                         request = angular.extend({ input: viewValue }, $scope.options);
                         autocompleteService.getPlacePredictions(request, function (predictions, status) {
+
+                            // Filter out unwanted results.
+                            predictions = filterPredictions(predictions);
+
                             $scope.$apply(function () {
                                 var customPlacePredictions;
 
@@ -223,78 +229,10 @@ angular.module('google.places', [])
                         if (isString(modelValue)) {
                             viewValue = modelValue;
                         } else if (isObject(modelValue)) {
-
-                            if(modelValue.adr_address) {
-                                viewValue = modelValue.formatted_address;
-                            } else {
-                                viewValue = resolvePlaceAddress(modelValue);
-                            }
+                            viewValue = modelValue.formatted_address;
                         }
 
                         return viewValue;
-                    }
-
-                    function resolvePlaceAddress(place) {
-
-                        var street1 = "";
-                        var city = null;
-                        var state = null;
-                        var postalCode = null;
-                        var country = null;
-
-                        if(!place.address_components)
-                            return null;
-
-                        for(var i=0; i < place.address_components.length; i++) {
-
-                            if(_.some(place.address_components[i].types, function(type) { return type == "street_number"; }))
-                                street1 += place.address_components[i].short_name;
-
-                            if(_.some(place.address_components[i].types, function(type) { return type == "route"; })) {
-
-                                if(street1)
-                                    street1 += " ";
-
-                                street1 += place.address_components[i].short_name;
-                            }
-
-                            if(_.some(place.address_components[i].types, function(type) { return type == "locality"; }))
-                                city = place.address_components[i].short_name;
-
-                            if(_.some(place.address_components[i].types, function(type) { return type == "administrative_area_level_1"; }))
-                                state = place.address_components[i].short_name;
-
-                            if(_.some(place.address_components[i].types, function(type) { return type == "postal_code"; }))
-                                postalCode = place.address_components[i].short_name;
-
-                            if(_.some(place.address_components[i].types, function(type) { return type == "country"; }))
-                                country = place.address_components[i].short_name;
-                        }
-
-                        var components = [];
-
-                        if(street1)
-                            components.push(street1);
-
-                        if(city)
-                            components.push(city);
-
-                        if(state) {
-
-                            var component = "";
-
-                            component = state;
-
-                            if(postalCode)
-                                component += (" " + postalCode);
-
-                            components.push(component);
-                        }
-
-                        if(country)
-                            components.push(country);
-
-                        return components.join(', ');
                     }
 
                     function render() {
@@ -396,6 +334,29 @@ angular.module('google.places', [])
 
                     function toLower(string) {
                         return (string == null) ? "" : string.toLowerCase();
+                    }
+
+                    function filterPredictions(predictions) {
+
+                        var filtered = [];
+                        for(var i=0; i<predictions.length; i++) {
+
+                            var ignored = false;
+                            var prediction = predictions[i];
+
+                            if($scope.ignoreTypes) {
+
+                                for(var j=0; j<prediction.types.length; j++)
+                                    if($scope.ignoreTypes.indexOf(prediction.types[j]) >= 0)
+                                        ignored = true;
+                            }
+
+                            if(!ignored) {
+                                filtered.push(prediction);
+                            }
+                        }
+
+                        return filtered;
                     }
                 }
             }
