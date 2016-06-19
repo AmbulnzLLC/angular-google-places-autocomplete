@@ -223,10 +223,78 @@ angular.module('google.places', [])
                         if (isString(modelValue)) {
                             viewValue = modelValue;
                         } else if (isObject(modelValue)) {
-                            viewValue = modelValue.formatted_address;
+
+                            if(modelValue.adr_address) {
+                                viewValue = modelValue.formatted_address;
+                            } else {
+                                viewValue = resolvePlaceAddress(modelValue);
+                            }
                         }
 
                         return viewValue;
+                    }
+
+                    function resolvePlaceAddress(place) {
+
+                        var street1 = "";
+                        var city = null;
+                        var state = null;
+                        var postalCode = null;
+                        var country = null;
+
+                        if(!place.address_components)
+                            return null;
+
+                        for(var i=0; i < place.address_components.length; i++) {
+
+                            if(_.some(place.address_components[i].types, function(type) { return type == "street_number"; }))
+                                street1 += place.address_components[i].short_name;
+
+                            if(_.some(place.address_components[i].types, function(type) { return type == "route"; })) {
+
+                                if(street1)
+                                    street1 += " ";
+
+                                street1 += place.address_components[i].short_name;
+                            }
+
+                            if(_.some(place.address_components[i].types, function(type) { return type == "locality"; }))
+                                city = place.address_components[i].short_name;
+
+                            if(_.some(place.address_components[i].types, function(type) { return type == "administrative_area_level_1"; }))
+                                state = place.address_components[i].short_name;
+
+                            if(_.some(place.address_components[i].types, function(type) { return type == "postal_code"; }))
+                                postalCode = place.address_components[i].short_name;
+
+                            if(_.some(place.address_components[i].types, function(type) { return type == "country"; }))
+                                country = place.address_components[i].short_name;
+                        }
+
+                        var components = [];
+
+                        if(street1)
+                            components.push(street1);
+
+                        if(city)
+                            components.push(city);
+
+                        if(state) {
+
+                            var component = "";
+
+                            component = state;
+
+                            if(postalCode)
+                                component += (" " + postalCode);
+
+                            components.push(component);
+                        }
+
+                        if(country)
+                            components.push(country);
+
+                        return components.join(', ');
                     }
 
                     function render() {
