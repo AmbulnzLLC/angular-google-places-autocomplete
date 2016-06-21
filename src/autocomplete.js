@@ -129,7 +129,7 @@ angular.module('google.places', [])
                             $scope.$apply(function () {
                                 event.stopPropagation();
                                 clearPredictions();
-                            });
+                            })
                         }
                     }
 
@@ -372,7 +372,7 @@ angular.module('google.places', [])
                     function indexOf(array, item) {
                         var i, length;
 
-                        if (array === null) return -1;
+                        if (array == null) return -1;
 
                         length = array.length;
                         for (i = 0; i < length; i++) {
@@ -386,7 +386,7 @@ angular.module('google.places', [])
                     }
 
                     function toLower(string) {
-                        return (string === null) ? "" : string.toLowerCase();
+                        return (string == null) ? "" : string.toLowerCase();
                     }
 
                     function filterPredictions(predictions) {
@@ -412,7 +412,7 @@ angular.module('google.places', [])
                         return filtered;
                     }
                 }
-            };
+            }
         }
     ])
 
@@ -446,7 +446,7 @@ angular.module('google.places', [])
                     $scope.$apply(function () {
                         $scope.position = getDrawerPosition($scope.input);
                     });
-                };
+                }
 
                 $scope.isOpen = function () {
                     return $scope.predictions.length > 0;
@@ -484,7 +484,7 @@ angular.module('google.places', [])
                     };
                 }
             }
-        };
+        }
     }])
 
     .directive('gPlacesAutocompletePrediction', [function () {
@@ -505,7 +505,7 @@ angular.module('google.places', [])
                 query:'='
             },
             template: TEMPLATE.join('')
-        };
+        }
     }])
 
     .filter('highlightMatched', ['$sce', function ($sce) {
@@ -539,11 +539,11 @@ angular.module('google.places', [])
             }
 
             return filtered;
-        };
+        }
     }])
 
     .filter('trailingComma', [function () {
         return function (input, condition) {
             return (condition) ? input + ',' : input;
-        };
+        }
     }]);
