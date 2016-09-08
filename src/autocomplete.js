@@ -27,8 +27,8 @@ angular.module('google.places', [])
    * <input type="text" g-places-autocomplete ng-model="myScopeVar" />
    */
   .directive('gPlacesAutocomplete',
-        [ '$parse', '$compile', '$timeout', '$document', 'googlePlacesApi',
-        function ($parse, $compile, $timeout, $document, google) {
+        [ '$parse', '$compile', '$timeout', '$document', 'googlePlacesApi', 'mapping',
+        function ($parse, $compile, $timeout, $document, google, mapping) {
 
             return {
                 restrict: 'A',
@@ -129,7 +129,7 @@ angular.module('google.places', [])
                             $scope.$apply(function () {
                                 event.stopPropagation();
                                 clearPredictions();
-                            })
+                            });
                         }
                     }
 
@@ -164,7 +164,7 @@ angular.module('google.places', [])
                                     $scope.$emit('g-places-autocomplete:select', prediction.place);
                                 });
 
-                                controller.$viewChangeListeners.forEach(function (fn) {fn()});
+                                controller.$viewChangeListeners.forEach(function (fn) {fn();});
                             });
                         } else {
 
@@ -176,7 +176,7 @@ angular.module('google.places', [])
                                             $scope.model = place;
                                             $scope.$emit('g-places-autocomplete:select', place);
                                             $timeout(function () {
-                                                controller.$viewChangeListeners.forEach(function (fn) {fn()});
+                                                controller.$viewChangeListeners.forEach(function (fn) {fn();});
                                             });
                                         });
                                     }
@@ -202,7 +202,7 @@ angular.module('google.places', [])
                                                 matched_substrings: match.matched_substrings,
                                                 terms: match.terms,
                                                 text_search: true
-                                            }
+                                            };
 
                                             $scope.predictions.push(prediction);
                                         });
@@ -256,7 +256,7 @@ angular.module('google.places', [])
                                 });
                             };
 
-                            if(predictions == null || predictions.length <= 0) {
+                            if(predictions === null || predictions.length <= 0) {
 
                                 autocompleteService.getQueryPredictions(request, function (predictions, status) {
 
@@ -282,7 +282,24 @@ angular.module('google.places', [])
                         if (isString(modelValue)) {
                             viewValue = modelValue;
                         } else if (isObject(modelValue)) {
-                            viewValue = modelValue.formatted_address;
+
+                            var formattedAddress = modelValue.formatted_address;
+                            var resolvedAddress = mapping.resolvePlaceAddress(modelValue);
+
+                            if (resolvedAddress !== undefined) {
+
+                                formattedAddress = _.filter([resolvedAddress.street1, resolvedAddress.city,
+                                    resolvedAddress.state + ' ' + resolvedAddress.postalCode], function (item) {
+                                    return item !== undefined && item !== null && item !== '';
+                                }).join(', ');
+
+                            } else if (formattedAddress !== undefined) {
+                                formattedAddress = formattedAddress.split(', ');
+                                formattedAddress.pop();
+                                formattedAddress = formattedAddress.join(', ');
+                            }
+
+                            viewValue = formattedAddress;
                         }
 
                         return viewValue;
@@ -372,7 +389,7 @@ angular.module('google.places', [])
                     function indexOf(array, item) {
                         var i, length;
 
-                        if (array == null) return -1;
+                        if (array === null) return -1;
 
                         length = array.length;
                         for (i = 0; i < length; i++) {
@@ -386,7 +403,7 @@ angular.module('google.places', [])
                     }
 
                     function toLower(string) {
-                        return (string == null) ? "" : string.toLowerCase();
+                        return (string === null) ? "" : string.toLowerCase();
                     }
 
                     function filterPredictions(predictions) {
@@ -412,7 +429,7 @@ angular.module('google.places', [])
                         return filtered;
                     }
                 }
-            }
+            };
         }
     ])
 
@@ -446,7 +463,7 @@ angular.module('google.places', [])
                     $scope.$apply(function () {
                         $scope.position = getDrawerPosition($scope.input);
                     });
-                }
+                };
 
                 $scope.isOpen = function () {
                     return $scope.predictions.length > 0;
@@ -484,7 +501,7 @@ angular.module('google.places', [])
                     };
                 }
             }
-        }
+        };
     }])
 
     .directive('gPlacesAutocompletePrediction', [function () {
@@ -492,8 +509,8 @@ angular.module('google.places', [])
             '<span class="pac-icon pac-icon-marker" ng-if="prediction.place_id"></span>',
             '<span class="pac-icon pac-icon-search" ng-if="!prediction.place_id"></span>',
             '<span class="pac-item-query" ng-bind-html="prediction | highlightMatched"></span>',
-            '<span ng-if="!prediction.text_search" ng-repeat="term in prediction.terms | unmatchedTermsOnly:prediction">{{term.value | trailingComma:!$last}}&nbsp;</span>',
-            '<span ng-if="prediction.text_search" ng-repeat="term in prediction.terms">{{term.value | trailingComma:!$last}}&nbsp;</span>',
+            '<span ng-if=\'!prediction.text_search\' ng-repeat="term in prediction.terms | unmatchedTermsOnly:prediction | removeCountry">{{term.value | trailingComma:!$last}}&nbsp;</span>',
+            '<span ng-if="prediction.text_search" ng-repeat="term in prediction.terms">{{term | trailingComma:!$last}}&nbsp;</span>',
             '<span class="custom-prediction-label" ng-if="prediction.is_custom">&nbsp;{{prediction.custom_prediction_label}}</span>'
         ];
 
@@ -505,7 +522,7 @@ angular.module('google.places', [])
                 query:'='
             },
             template: TEMPLATE.join('')
-        }
+        };
     }])
 
     .filter('highlightMatched', ['$sce', function ($sce) {
@@ -524,7 +541,7 @@ angular.module('google.places', [])
 
                 return $sce.trustAsHtml('<span class="pac-matched">' + prediction.description + '</span>');
             }
-        }
+        };
     }])
 
     .filter('unmatchedTermsOnly', [function () {
@@ -539,11 +556,24 @@ angular.module('google.places', [])
             }
 
             return filtered;
-        }
+        };
     }])
+    .filter('removeCountry', [function () {
+        return function (terms) {
+            var i, term, filtered = [];
 
+            for (i = 0; i < terms.length; i++) {
+                term = terms[i];
+                if (!_.includes(['United States', 'USA', 'US'], term.value)) {
+                    filtered.push(term);
+                }
+            }
+
+            return filtered;
+        };
+    }])
     .filter('trailingComma', [function () {
         return function (input, condition) {
             return (condition) ? input + ',' : input;
-        }
+        };
     }]);
