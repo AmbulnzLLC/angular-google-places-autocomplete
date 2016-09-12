@@ -289,7 +289,7 @@ angular.module('google.places', [])
                             if (resolvedAddress !== undefined) {
 
                                 formattedAddress = _.filter([resolvedAddress.street1, resolvedAddress.city,
-                                    resolvedAddress.state + ' ' + resolvedAddress.postalCode], function (item) {
+                                    (resolvedAddress.state || '') + ' ' + (resolvedAddress.postalCode || '')], function (item) {
                                     return item !== undefined && item !== null && item !== '';
                                 }).join(', ');
 
